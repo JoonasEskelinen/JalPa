@@ -26,3 +26,4 @@ Yksi projektin haasteista oli hallita anonyymin session ja tietokantaprofiilin v
 1. Käyttäjä kirjautuu anonyymisti.
 2. SQL-funktio (`reclaim_player`) päivittää pelaajan ID:n vastaamaan uutta sessiota.
 3. Sovellus käyttää callback-mallia (`onLoginSuccess`) varmistaakseen, että näkymä vaihtuu vasta, kun tietokanta on 100 % synkronoitu.
+4. Sovellus jaettu vain sisäisesti joukkueen pelaajien kesken. Jatkossa mahdollisesti laajennus useamman joukkueen käyttöön, jolloin tietokanta sääntöjä tarkoitus tiukentaa. 
