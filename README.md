@@ -1,29 +1,147 @@
-# JalPa - Urheilujoukkueen hallintasovellus ⚽
+# JALPA
 
-JalPa on React Native (Expo) -sovellus, joka on suunniteltu urheilujoukkueen sisäiseen budjetin seurantaan, laskutuksiin, tapahtumien nimenhuutoihin, sakkokassan hallintaan, sekä tilastojen seurantaan. Pelaajat voivat kirjautua nimen ja pelinumeron mukaan.
+Sisäinen web-sovellus **YT JalPa** -salibandyjoukkueelle. Korvasi aiemman React Native / Android -prototyypin. Käyttö on tarkoitettu vain joukkueen pelaajille ja hallinnolle — ei julkinen palvelu.
 
-
+PWA: sovelluksen voi asentaa puhelimen aloitusnäytölle. Ulkoasu: tumma teema ja seuran keltainen (#FFD100).
 
 ## Ominaisuudet
 
-- **Salasanaton kirjautuminen:** Käyttää anonyymiä autentikaatiota yhdistettynä kustomoituun pelaajaprofiilien palautusjärjestelmään (Account Reclaim).
-- **Sakkokassa:** Admin-oikeuksilla varustetut käyttäjät voivat merkata sakkoja pelaajille.
-- **Nimehuuto (Events):** Tapahtumien luonti ja osallistujien seuranta.
-- **Pelaajahallinta:** Joukkueen jäsenten listaaminen, muokkaus ja tilastot (sisäinen pistepörssi).
-- **Talousnäkymä:** Joukkueen yhteisen talouden ja maksujen seuranta.
+| Osa | Kuvaus |
+|-----|--------|
+| **Kirjautuminen** | Pelaajanumero + nimi + salasana. Uusi pelaaja kirjautuu ensin tyhjällä salasanalla ja asettaa oman. |
+| **Etusivu** | Omat pisteet, avoimet sakot, joukkueen saldo, IR-tilanne, tulevat tapahtumat. |
+| **Nimenhuuto** | Harjoitukset ja pelit; toistuvat viikkotapahtumat. Ilmoittautuminen *Tulen* / *En tule*. |
+| **Pelaajat** | NHL-henkiset **pelaajakortit** (KOK, tilastot, erikoiskortit). |
+| **Pistepörssi** | Maalit, syötöt, pisteet (M+S), jäähyminuutit kaudella. |
+| **Sakkokassa** | Sakot, maksutila, kausikohtainen seuranta. |
+| **Laskut** | Kausimaksut pelaajille, joukkueen menot, MobilePay-linkit, maksujen merkintä. |
+| **IR-lista** | Aktiiviset loukkaantumiset ja palautumisarviot. |
+| **Hallinta** (admin) | Roster, pelaajien lisäys, sakot, pisteet, tapahtumat, laskutus. |
 
-## 🛠 Teknologiat
+### Pelaajakortit
 
-- **Frontend:** React Native (Expo), TypeScript
-- **Backend:** [Supabase](https://supabase.com/) (PostgreSQL, Auth)
-- **Navigointi:** Custom Context-based navigation (eriytetty lib-kansioon)
-- **Tyylit:** StyleSheet API kustomoidulla teemalla
+- **KOK** (kokonaisarvo) alkaa kaudella **75**.
+- Nousee: +1 / maali, +1 / syöttö, +1 / osallistuttu harjoitus (nimenhuuto).
+- Laskee: −1 / 2 jäähyminuuttia.
+- Kortilla näkyvät suoraan: **LAUKAUS**, **SYÖTTÖ**, **HARJ**, **JÄÄHYT** (pistepörssi + nimenhuuto). **PUOL** tulossa myöhemmin.
+- **Erikoiskortit:** *MAALIPUTKI* (≥2 peräkkäistä pelimerkintää maaleilla), *TREENIPUTKI* (≥10 peräkkäistä harjoitusta). Harjoitus tunnistetaan tapahtuman otsikosta (*harjoitus*, *treeni*, *training*).
 
-## 🏗 Arkkitehtuuri ja Haasteet
+Aktiivinen kausi on määritelty sekä frontendissä (`frontend/src/api.js` → `SEASON`) että backend-reiteissä (`CURRENT_SEASON`).
 
-### Auth Flow & Race Condition ratkaisu
-Yksi projektin haasteista oli hallita anonyymin session ja tietokantaprofiilin välistä suhdetta. Toteutin ratkaisun, jossa:
-1. Käyttäjä kirjautuu anonyymisti.
-2. SQL-funktio (`reclaim_player`) päivittää pelaajan ID:n vastaamaan uutta sessiota.
-3. Sovellus käyttää callback-mallia (`onLoginSuccess`) varmistaakseen, että näkymä vaihtuu vasta, kun tietokanta on 100 % synkronoitu.
-4. Sovellus jaettu vain sisäisesti joukkueen pelaajien kesken. Jatkossa mahdollisesti laajennus useamman joukkueen käyttöön, jolloin tietokanta sääntöjä tarkoitus tiukentaa. 
+## Teknologiat
+
+| Kerros | Stack |
+|--------|--------|
+| Frontend | React 18, React Router, Vite |
+| Backend | Node.js, Express |
+| Tietokanta | PostgreSQL 16 (Docker) |
+| Auth | JWT, bcrypt |
+| Muuta | QR-koodit (MobilePay), PWA (manifest + service worker) |
+
+## Projektirakenne
+
+```
+jalpa/
+├── backend/
+│   src/
+│   │   db/          migrate.js, pool.js, seed.js
+│   │   lib/         roster.js, playerCards.js
+│   │   middleware/  auth.js
+│   │   routes/      auth, events, fines, points, invoices, injuries, playerCards
+│   └── .env.example
+├── frontend/
+│   src/             sivut, komponentit, tyylit
+│   public/          manifest, sw.js
+│   dist/            tuotantobuild (generoidaan)
+├── logo.jpg         palvellaan API:sta /logo.jpg
+├── docker-compose.yml
+├── PAIVITYS.md          git-pohjainen tuotantopäivitys
+└── PAIVITYS-WINSCP.md   WinSCP + paikallinen build
+```
+
+## Kehitysympäristö
+
+### Vaatimukset
+
+- Node.js 18+
+- Docker (PostgreSQL)
+
+### 1. Tietokanta
+
+```bash
+docker compose up -d
+```
+
+### 2. Backend
+
+```bash
+cd backend
+cp .env.example .env
+# Muokkaa .env: DATABASE_URL, JWT_SECRET, MOBILEPAY_PHONE, CORS_ORIGIN
+npm install
+node src/db/migrate.js
+npm run dev
+```
+
+API oletuksena: `http://localhost:3001`  
+Health: `GET /api/health` → `{"ok":true}`
+
+### 3. Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Sovellus: `http://localhost:5173` — Vite proxyttaa `/api` ja `/logo.jpg` backendiin.
+
+### Ensimmäinen admin / seed (valinnainen)
+
+```bash
+cd backend
+node src/db/seed.js
+```
+
+Katso `seed.js` luotujen käyttäjien tiedot ennen ajoa.
+
+## Ympäristömuuttujat (backend)
+
+| Muuttuja | Kuvaus |
+|----------|--------|
+| `PORT` | API-portti (oletus 3001) |
+| `DATABASE_URL` | PostgreSQL-yhteysmerkkijono |
+| `JWT_SECRET` | Tokenien allekirjoitus |
+| `CORS_ORIGIN` | Frontendin origin kehityksessä |
+| `MOBILEPAY_PHONE` | MobilePay-numero maksulinkkejä varten |
+
+## API (lyhyesti)
+
+Kaikki reitit (paitsi kirjautuminen) vaativat `Authorization: Bearer <token>`.
+
+| Prefiksi | Sisältö |
+|----------|---------|
+| `/api/auth` | Kirjautuminen, roster, salasanan vaihto, admin-käyttäjät |
+| `/api/events` | Tapahtumat, ilmoittautumiset, toistuvat sarjat |
+| `/api/fines` | Sakot |
+| `/api/points` | Pistepörssi |
+| `/api/invoices` | Laskut, maksut, joukkueen talous |
+| `/api/injuries` | Loukkaantumiset |
+| `/api/player-cards` | Pelaajakortit kaudelle |
+
+## Tuotanto
+
+Sovellus on tarkoitettu joukkueen omaan palvelimeen. Yksityiskohtaiset ohjeet:
+
+- **Git + palvelin:** [PAIVITYS.md](./PAIVITYS.md)
+- **WinSCP + `npm run build` omalla koneella:** [PAIVITYS-WINSCP.md](./PAIVITYS-WINSCP.md)
+
+Tyypillinen setup: nginx tarjoilee `frontend/dist`, Node/PM2 (`jalpa-api`) pyörittää backendiä, Postgres Dockerissa.
+
+## Lisenssi ja käyttö
+
+Private / joukkueen sisäinen projekti. Älä jaa `.env`-tiedostoja tai tuotantotunnuksia.
+
+---
+
+Aiemman mobiiliprototyypin historia: [GitHub — JalPa](https://github.com/JoonasEskelinen/JalPa) (vanha Android-versio; nykyinen koodi on tässä repossa web-pinona).
